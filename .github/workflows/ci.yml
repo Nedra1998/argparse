@@ -27,22 +27,22 @@ jobs:
         include:
           - toolchain: macos-latest-clang
             os: macos-latest
-            cc: clang
+            c: clang
             cxx: clang++
 
           - toolchain: ubuntu-latest-clang
             os: ubuntu-latest
-            cc: clang
+            c: clang
             cxx: clang++
 
           - toolchain: ubuntu-latest-gcc
             os: ubuntu-latest
-            cc: gcc 
+            c: gc 
             cxx: g++
 
           - toolchain: windows-latest-msvc
             os: windows-latest
-            cc: msvc 
+            c: msvc 
             cxx: msvc
 
     steps:
@@ -51,7 +51,7 @@ jobs:
 
       - name: Configure CMake
         working-directory: ${{ github.workspace }}
-        run: cmake -S . -B build -DCMAKE_CC_COMPILER=${{ matrix.cc }} -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+        run: cmake -S . -B build -DCMAKE_C_COMPILER=${{ matrix.c }} -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
       - name: Build
         working-directory: ${{ github.workspace }}
