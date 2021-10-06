@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+defaults:
+  run:
+    shell: bash
+env:
+  BUILD_TYPE: Debug
+
+jobs:
+  test:
+    name: ${{ matrix.toolchain }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        toolchain:
+          - macos-latest-clang
+          - ubuntu-latest-clang
+          - ubuntu-latest-gcc
+          - windows-latest-msvc
+        include:
+          - toolchain: macos-latest-clang
+            os: macos-latest
+            cc: clang
+            cxx: clang++
+
+          - toolchain: ubuntu-latest-clang
+            os: ubuntu-latest
+            cc: clang
+            cxx: clang++
+
+          - toolchain: ubuntu-latest-gcc
+            os: ubuntu-latest
+            cc: gcc 
+            cxx: g++
+
+          - toolchain: windows-latest-msvc
+            os: windows-latest
+            cc: msvc 
+            cxx: msvc
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Configure CMake
+        run: cmake -B ${{ github.workspace }}/build -DCMAKE_CC_COMPILER=${{ matrix.cc }} -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+
+      - name: Build
+        run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+
+      - name: Test
+        working-directory: ${{ github.workspace }}/build
+        run: ctest -C ${{ env.BUILD_TYPE }} --output-on-failure

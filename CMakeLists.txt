@@ -1,0 +1,120 @@
+cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
+
+project(
+  argparse
+  VERSION 0.1.0
+  LANGUAGES CXX)
+
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  set(ARGPARSE_MAIN_PROJECT ON)
+else()
+  set(ARGPARSE_MAIN_PROJECT OFF)
+endif()
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+option(ARGPARSE_BUILD_TESTS "Build unit tests for argparse"
+       ${ARGPARSE_MAIN_PROJECT})
+if(ARGPARSE_MAIN_PROJECT
+   AND "${CMAKE_BUILD_TYPE}" MATCHES "Debug"
+   AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
+  find_program(COMMITLINT commitlint)
+  if(NOT EXISTS "${PROJECT_SOURCE_DIR}/.git/hooks/commit-msg")
+    execute_process(
+      COMMAND
+        ${CMAKE_COMMAND} -E create_symlink
+        "${PROJECT_SOURCE_DIR}/.github/hooks/commit-msg"
+        "${PROJECT_SOURCE_DIR}/.git/hooks/commit-msg")
+  else()
+    message(WARNING "commitlint was not found in your path")
+  endif()
+endif()
+
+find_program(CCACHE ccache)
+if(CCACHE AND ARGPARSE_MAIN_PROJECT)
+  set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE})
+  set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ${CCACHE})
+endif()
+
+if(ARGPARSE_MAIN_PROJECT AND "${CMAKE_BUILD_TYPE}" MATCHES
+                             "Debug|RelWithDebInfo")
+  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+  if(NOT EXISTS "${PROJECT_SOURCE_DIR}/compile_commands.json")
+    execute_process(
+      COMMAND
+        ${CMAKE_COMMAND} -E create_symlink
+        "${PROJECT_BINARY_DIR}/compile_commands.json"
+        "${PROJECT_SOURCE_DIR}/compile_commands.json")
+  endif()
+endif()
+
+add_library(${PROJECT_NAME} INTERFACE)
+add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+
+target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_17)
+target_include_directories(
+  ${PROJECT_NAME}
+  INTERFACE $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>)
+
+if(ARGPARSE_BUILD_TESTS)
+  include(CTest)
+  enable_testing()
+
+  add_subdirectory(test)
+endif()
+
+install(TARGETS ${PROJECT_NAME} EXPORT "${PROJECT_NAME}Config")
+install(
+  EXPORT "${PROJECT_NAME}Config"
+  NAMESPACE "${PROJECT_NAME}::"
+  DESTINATION ${CMAKE_INSTALL_LIBDIR_ARCHIND}/cmake/${PROJECT_NAME})
+install(FILES ${CMAKE_CURRENT_LIST_DIR}/include/argparse/argparse.hpp
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/argparse)
+
+set(CONFIG_FILE_NAME_WITHOUT_EXT "${PROJECT_NAME}Config")
+set(CMAKE_CONFIG_FILE_BASENAME
+    "${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_FILE_NAME_WITHOUT_EXT}")
+set(CMAKE_CONFIG_VERSION_FILE_NAME
+    "${CMAKE_CONFIG_FILE_BASENAME}-version.cmake")
+set(CMAKE_CONFIG_FILE_NAME "${CMAKE_CONFIG_FILE_BASENAME}.cmake")
+
+if(${CMAKE_VERSION} VERSION_GREATER "3.14")
+  set(OPTIONAL_ARCH_INDEPENDENT "ARCH_INDEPENDENT")
+endif()
+
+write_basic_package_version_file(
+  "${CMAKE_CONFIG_VERSION_FILE_NAME}"
+  COMPATIBILITY ExactVersion ${OPTIONAL_ARCH_INDEPENDENT})
+
+export(EXPORT "${PROJECT_NAME}Config" NAMESPACE "${PROJECT_NAME}::")
+
+install(FILES "${CMAKE_CONFIG_VERSION_FILE_NAME}"
+        DESTINATION "${CMAKE_INSTALL_LIBDIR_ARCHIND}/cmake/${PROJECT_NAME}")
+
+set(PackagingTemplatesDir "${CMAKE_CURRENT_SOURCE_DIR}/packaging")
+
+set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
+set(CPACK_PACKAGE_VENDOR "")
+set(CPACK_PACKAGE_DESCRIPTION "${PROJECT_DESCRIPTION}")
+set(CPACK_DEBIAN_PACKAGE_NAME "${CPACK_PACKAGE_NAME}")
+set(CPACK_RPM_PACKAGE_NAME "${CPACK_PACKAGE_NAME}")
+set(CPACK_PACKAGE_HOMEPAGE_URL "${PROJECT_HOMEPAGE_URL}")
+set(CPACK_PACKAGE_MAINTAINER "Arden Rasmussem")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "${CPACK_PACKAGE_MAINTAINER}")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+
+set(CPACK_DEBIAN_PACKAGE_NAME "lib${PROJECT_NAME}-dev")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6-dev")
+set(CPACK_DEBIAN_PACKAGE_SUGGESTS "cmake, pkg-config, pkg-conf")
+
+set(CPACK_RPM_PACKAGE_NAME "lib${PROJECT_NAME}-devel")
+set(CPACK_RPM_PACKAGE_SUGGESTS "${CPACK_DEBIAN_PACKAGE_SUGGESTS}")
+
+set(CPACK_DEB_COMPONENT_INSTALL ON)
+set(CPACK_RPM_COMPONENT_INSTALL ON)
+set(CPACK_NSIS_COMPONENT_INSTALL ON)
+set(CPACK_DEBIAN_COMPRESSION_TYPE "xz")
+
+include(CPack)
