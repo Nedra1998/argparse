@@ -131,13 +131,15 @@ public:
   inline void insert(const std::string_view &key, const T &val) {
     data_.insert({key, ValueContainer{std::make_shared<Value<T>>(val)}});
   }
-  template <>
-  inline void insert(const std::string_view &key, const std::nullptr_t &) {
-    data_.insert({key, ValueContainer{nullptr}});
-  }
 
 protected:
   std::unordered_map<std::string_view, ValueContainer> data_;
 };
+
+template <>
+inline void Result::insert(const std::string_view &key,
+                           const std::nullptr_t &) {
+  data_.insert({key, ValueContainer{nullptr}});
+}
 
 } // namespace argparse
