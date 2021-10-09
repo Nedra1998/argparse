@@ -1,7 +1,6 @@
 #pragma once
 
 #include <algorithm>
-#include <compare>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -78,10 +77,28 @@ public:
   }
 
   template <typename T>
-  inline auto operator<=>(const T &rhs) const -> decltype(rhs <=> rhs) {
+  inline auto operator<(const T &rhs) const -> decltype(rhs < rhs) {
     if (ptr != nullptr)
-      return std::static_pointer_cast<const Value<T>>(ptr)->value_ <=> rhs;
-    return std::strong_ordering::less;
+      return std::static_pointer_cast<const Value<T>>(ptr)->value_ < rhs;
+    return false;
+  }
+  template <typename T>
+  inline auto operator>(const T &rhs) const -> decltype(rhs > rhs) {
+    if (ptr != nullptr)
+      return std::static_pointer_cast<const Value<T>>(ptr)->value_ > rhs;
+    return false;
+  }
+  template <typename T>
+  inline auto operator<=(const T &rhs) const -> decltype(rhs <= rhs) {
+    if (ptr != nullptr)
+      return std::static_pointer_cast<const Value<T>>(ptr)->value_ <= rhs;
+    return false;
+  }
+  template <typename T>
+  inline auto operator>=(const T &rhs) const -> decltype(rhs >= rhs) {
+    if (ptr != nullptr)
+      return std::static_pointer_cast<const Value<T>>(ptr)->value_ >= rhs;
+    return false;
   }
 };
 

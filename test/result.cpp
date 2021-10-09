@@ -45,16 +45,24 @@ TEMPLATE_TEST_CASE("result comparison casts", "", bool, char, int, unsigned int,
     }
   }
 
+  SECTION("not equal comparison casts") {
+    if constexpr (!std::is_floating_point<TestType>::value) {
+      CHECK_FALSE(res["a"] != TestType{0});
+      CHECK_FALSE(res["b"] != TestType{1});
+      CHECK(res["c"] != TestType{0});
+    }
+  }
+
   SECTION("less-than comparison casts") {
     CHECK_FALSE(res["a"] < TestType{0});
     CHECK_FALSE(res["b"] < TestType{1});
-    CHECK(res["c"] < TestType{0});
+    CHECK_FALSE(res["c"] < TestType{0});
   }
 
   SECTION("less-than or equal comparison casts") {
     CHECK(res["a"] <= TestType{0});
     CHECK(res["b"] <= TestType{1});
-    CHECK(res["c"] <= TestType{0});
+    CHECK_FALSE(res["c"] <= TestType{0});
   }
 
   SECTION("greater-than comparison casts") {
