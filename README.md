@@ -2,7 +2,6 @@
   <h1 align="center">argparse</h1>
   <p align="center">
     <img alt="GitHub Workflow Status" src="https://img.shields.io/github/workflow/status/Nedra1998/argparse/CI?label=Build&style=flat-square">
-    <img alt="Codecov" src="https://img.shields.io/codecov/c/github/Nedra1998/argparse?label=Coverage&style=flat-square">
     <img alt="GitHub issues" src="https://img.shields.io/github/issues/Nedra1998/argparse?label=Issues&style=flat-square">
     <img alt="GitHub pull requests" src="https://img.shields.io/github/issues-pr/Nedra1998/argparse?label=Pull%20Requests&style=flat-square">
     <img alt="GitHub repo size" src="https://img.shields.io/github/repo-size/Nedra1998/argparse?label=Size&style=flat-square">
