@@ -6,6 +6,7 @@
 #include <memory>
 #include <regex>
 #include <string>
+#include <sstream>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
