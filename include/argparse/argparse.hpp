@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <any>
 #include <cstring>
 #include <memory>
 #include <regex>
@@ -82,132 +83,85 @@ public:
                        std::string{type} + "'") {}
 };
 
-class ValueContainer;
+// TODO: Change all of these template value containers, into using std::any, as
+// that provides runtime exceptions if the type is incorrect, which is better
+// than implicitly creating one.
 
-class ValueBase {
+class Value {
 public:
-  ValueBase(const std::uint8_t &count) : count_(count) {}
-
-protected:
-  friend class ValueContainer;
-  std::uint8_t count_;
-};
-
-template <typename T> class Value : public ValueBase {
-public:
-  Value(const T &value) : ValueBase(0), value_(value){};
-
-  template <typename U = T>
-  inline typename std::enable_if<std::is_convertible<T, U>::value, U>::type
-  as() const {
-    return static_cast<U>(value_);
-  }
-
-protected:
-  friend class ValueContainer;
-  T value_;
-};
-
-class ValueContainer {
-public:
-  std::shared_ptr<ValueBase> ptr;
-
-  template <typename T, typename U = T>
-  inline typename std::enable_if<std::is_convertible<T, U>::value, U>::type
-  as() const {
-    if (ptr != nullptr)
-      return static_cast<U>(
-          std::static_pointer_cast<const Value<T>>(ptr)->value_);
-    return U{};
-  }
-  inline bool has() const { return ptr != nullptr; }
-  inline std::uint8_t count() const { return ptr->count_; }
-
   template <typename T>
-  inline const std::shared_ptr<const Value<T>> get() const {
-    return std::static_pointer_cast<const Value<T>>(ptr);
-  }
+  Value(const T &value, std::uint8_t count = 0)
+      : value_{std::move(value)}, count_{std::move(count)} {}
 
-  inline operator bool() const { return ptr != nullptr; }
+  template <typename T> inline T as() const { return std::any_cast<T>(value_); }
+  inline std::uint8_t count() const { return count_; }
+  inline const std::any get() const { return value_; }
 
-  template <typename T>
-  inline auto operator==(const T &rhs) const -> decltype(rhs == rhs) {
-    if (ptr != nullptr)
-      return std::static_pointer_cast<const Value<T>>(ptr)->value_ == rhs;
-    return false;
-  }
-  template <typename T>
-  inline auto operator!=(const T &rhs) const -> decltype(rhs != rhs) {
-    if (ptr != nullptr)
-      return std::static_pointer_cast<const Value<T>>(ptr)->value_ != rhs;
+  inline operator bool() const {
+    if (!value_.has_value())
+      return false;
+    else if (value_.type() == typeid(bool))
+      return std::any_cast<bool>(value_);
     return true;
   }
 
   template <typename T>
+  inline auto operator==(const T &rhs) const -> decltype(rhs == rhs) {
+    return std::any_cast<T>(value_) == rhs;
+  }
+  template <typename T>
+  inline auto operator!=(const T &rhs) const -> decltype(rhs != rhs) {
+    return std::any_cast<T>(value_) != rhs;
+  }
+  template <typename T>
   inline auto operator<(const T &rhs) const -> decltype(rhs < rhs) {
-    if (ptr != nullptr)
-      return std::static_pointer_cast<const Value<T>>(ptr)->value_ < rhs;
-    return false;
+    return std::any_cast<T>(value_) < rhs;
   }
   template <typename T>
   inline auto operator>(const T &rhs) const -> decltype(rhs > rhs) {
-    if (ptr != nullptr)
-      return std::static_pointer_cast<const Value<T>>(ptr)->value_ > rhs;
-    return false;
+    return std::any_cast<T>(value_) > rhs;
   }
   template <typename T>
   inline auto operator<=(const T &rhs) const -> decltype(rhs <= rhs) {
-    if (ptr != nullptr)
-      return std::static_pointer_cast<const Value<T>>(ptr)->value_ <= rhs;
-    return false;
+    return std::any_cast<T>(value_) <= rhs;
   }
   template <typename T>
   inline auto operator>=(const T &rhs) const -> decltype(rhs >= rhs) {
-    if (ptr != nullptr)
-      return std::static_pointer_cast<const Value<T>>(ptr)->value_ >= rhs;
-    return false;
+    return std::any_cast<T>(value_) >= rhs;
   }
+
+protected:
+  std::any value_;
+  std::uint8_t count_;
 };
 
 class Result {
 public:
-  template <typename T, typename U = T>
-  inline typename std::enable_if<std::is_convertible<T, U>::value, U>::type
-  get(const std::string_view &key) const {
-    const std::shared_ptr<const Value<T>> ptr = data_.at(key).get<T>();
-    if (ptr != nullptr)
-      return ptr->template as<U>();
-    return U{};
+  template <typename T> inline T get(std::string_view key) const {
+    return data_.at(key).as<T>();
   }
-
-  inline const ValueContainer &operator[](const std::string_view &key) const {
+  inline const Value &operator[](std::string_view key) const {
     return data_.at(key);
   }
-
-  inline std::uint8_t count(const std::string_view &key) const {
+  inline std::uint8_t count(std::string_view key) const {
     return data_.at(key).count();
   }
-  inline bool has(const std::string_view &key) const {
-    return data_.at(key).has();
+  inline bool has(std::string_view key) const {
+    return data_.find(key) != data_.end();
   }
 
-  inline void insert(const std::string_view &key, const ValueContainer &val) {
-    data_.insert({key, val});
+  inline void insert(std::string_view key, Value value) {
+    data_.insert({key, std::move(value)});
   }
+
   template <typename T>
-  inline void insert(const std::string_view &key, const T &val) {
-    data_.insert({key, ValueContainer{std::make_shared<Value<T>>(val)}});
+  inline void insert(std::string_view key, const T &value) {
+    data_.insert({key, Value{std::move(value)}});
   }
 
-protected:
-  std::unordered_map<std::string_view, ValueContainer> data_;
+private:
+  std::unordered_map<std::string_view, Value> data_;
 };
-
-template <>
-inline void Result::insert(const std::string_view &key,
-                           const std::nullptr_t &) {
-  data_.insert({key, ValueContainer{nullptr}});
-}
 
 template <typename T,
           typename std::enable_if<std::is_integral<T>::value>::type * = nullptr>
