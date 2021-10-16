@@ -15,16 +15,20 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 option(ARGPARSE_BUILD_TESTS "Build unit tests for argparse"
        ${ARGPARSE_MAIN_PROJECT})
+option(ARGPARSE_BUILD_EXAMPLES "Build examples for argparse"
+       ${ARGPARSE_MAIN_PROJECT})
 if(ARGPARSE_MAIN_PROJECT
    AND "${CMAKE_BUILD_TYPE}" MATCHES "Debug"
    AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
   find_program(COMMITLINT commitlint)
-  if(NOT EXISTS "${PROJECT_SOURCE_DIR}/.git/hooks/commit-msg")
-    execute_process(
-      COMMAND
-        ${CMAKE_COMMAND} -E create_symlink
-        "${PROJECT_SOURCE_DIR}/.github/hooks/commit-msg"
-        "${PROJECT_SOURCE_DIR}/.git/hooks/commit-msg")
+  if(COMMITLINT)
+    if(NOT EXISTS "${PROJECT_SOURCE_DIR}/.git/hooks/commit-msg")
+      execute_process(
+        COMMAND
+          ${CMAKE_COMMAND} -E create_symlink
+          "${PROJECT_SOURCE_DIR}/.github/hooks/commit-msg"
+          "${PROJECT_SOURCE_DIR}/.git/hooks/commit-msg")
+    endif()
   else()
     message(WARNING "commitlint was not found in your path")
   endif()
@@ -62,6 +66,10 @@ if(ARGPARSE_BUILD_TESTS)
   enable_testing()
 
   add_subdirectory(test)
+endif()
+
+if(ARGPARSE_BUILD_EXAMPLES)
+  add_subdirectory(examples)
 endif()
 
 install(TARGETS ${PROJECT_NAME} EXPORT "${PROJECT_NAME}Config")
